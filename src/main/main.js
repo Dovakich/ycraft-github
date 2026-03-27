@@ -7,6 +7,13 @@ const { autoUpdater } = require('electron-updater');
 const log  = require('electron-log');
 const Store = require('electron-store');
 
+process.on('uncaughtException', (err) => {
+  log.error('uncaughtException:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  log.error('unhandledRejection:', reason);
+});
+
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-gpu-compositing');
@@ -25,7 +32,7 @@ const store = new Store({
     windowWidth:   1280,
     windowHeight:  720,
     fullscreen:    false,
-    closeOnLaunch: true,
+    closeOnLaunch: false,
     serverIP:      'play.y-craft.net',
     autoConnect:   false,
     lastVersion:   ''
@@ -50,7 +57,7 @@ function createWindow() {
     transparent:     false,
     backgroundColor: '#0d0f14',
     resizable:       true,
-    icon:            path.join(__dirname, '../../assets/icon.png'),
+    icon:            (() => { const p = path.join(__dirname, '../../assets/icon.png'); return fs.existsSync(p) ? p : undefined; })(),
     webPreferences: {
       preload:          path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -58,8 +65,15 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  const indexPath = path.join(__dirname, '../renderer/index.html');
+  mainWindow.loadFile(indexPath).catch(e => log.error('loadFile failed:', e));
   mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.webContents.on('render-process-gone', (_, details) => {
+    log.error('Render process gone:', details.reason, details.exitCode);
+  });
+  mainWindow.webContents.on('unresponsive', () => {
+    log.warn('Window became unresponsive');
+  });
 }
 
 app.whenReady().then(() => {
@@ -193,13 +207,17 @@ function setupIPC() {
     launcher.on('stderr',  line => send('game:stderr', line));
     launcher.on('started', ()   => send('game:started', {}));
     launcher.on('closed',  code => send('game:closed', { code }));
-    launcher.on('error',   msg  => send('game:error',  { message: msg }));
+    launcher.on('error',   msg  => {
+      log.error('[GL] game error:', msg);
+      send('game:error', { message: msg });
+    });
 
     try {
       await launcher.launch(opts);
       return { success: true };
     } catch (e) {
-      log.error('game:launch:', e.message);
+      log.error('game:launch threw:', e.message);
+      send('game:error', { message: e.message });
       return { error: e.message };
     }
   });

@@ -22,7 +22,12 @@ class GameLauncher extends EventEmitter {
 
     const gameDir  = this.store.get('gameDir');
     const username = (opts.username  || this.store.get('username') || 'Player').trim();
-    const ram      = opts.ram        || this.store.get('ram')          || 2048;
+    const ramRaw    = opts.ram        || this.store.get('ram')          || 2048;
+    const os        = require('os');
+    const totalMb   = Math.floor(os.totalmem() / 1024 / 1024);
+    const safeMb    = Math.max(512, Math.min(ramRaw, Math.floor(totalMb * 0.75)));
+    const ram       = safeMb;
+    this.log.info('[GL] RAM requested:', ramRaw, 'MB, safe:', ram, 'MB, total:', totalMb, 'MB');
     const javaPath = opts.javaPath   || this.store.get('javaPath')     || this._detectJava();
     const width    = opts.width      || this.store.get('windowWidth')  || 1280;
     const height   = opts.height     || this.store.get('windowHeight') || 720;
@@ -172,12 +177,29 @@ class GameLauncher extends EventEmitter {
     delete env._JAVA_OPTIONS;
     delete env.JDK_JAVA_OPTIONS;
 
-    this.process = spawn(javaPath, fullArgs, {
-      cwd:   gameDir,
-      stdio: 'pipe',
-      detached: false,
-      env,
-    });
+    this.log.info('[GL] spawn java, RAM:', ram + 'MB');
+
+    let proc;
+    try {
+      proc = spawn(javaPath, fullArgs, {
+        cwd:   gameDir,
+        stdio: 'pipe',
+        detached: false,
+        env,
+      });
+    } catch (spawnErr) {
+      this.log.error('[GL] spawn failed:', spawnErr.message);
+      if (spawnErr.code === 'ENOENT') {
+        this.emit('error', 'Java не знайдено! Встановіть Java 17+ або вкажіть шлях у Налаштуваннях.');
+      } else if (spawnErr.code === 'EACCES') {
+        this.emit('error', 'Немає доступу до Java. Запустіть лаунчер від імені адміністратора.');
+      } else {
+        this.emit('error', 'Не вдалось запустити Java: ' + spawnErr.message);
+      }
+      return;
+    }
+
+    this.process = proc;
 
     this.process.stdout.on('data', d =>
       d.toString().split('\n').filter(Boolean).forEach(l => this.emit('stdout', l))
@@ -185,18 +207,25 @@ class GameLauncher extends EventEmitter {
     this.process.stderr.on('data', d =>
       d.toString().split('\n').filter(Boolean).forEach(l => this.emit('stderr', l))
     );
-    this.process.on('spawn',   ()   => this.emit('started'));
-    this.process.on('close',   code => {
+    this.process.on('spawn', () => {
+      this.log.info('[GL] spawned, PID:', proc.pid);
+      this.emit('started');
+    });
+    this.process.on('close', (code, signal) => {
+      this.log.info('[GL] closed, code:', code, 'signal:', signal);
       this.process = null;
-      this.emit('closed', code);
+      this.emit('closed', code ?? 1);
     });
     this.process.on('error', err => {
+      this.log.error('[GL] process error:', err.code, err.message);
       this.process = null;
-      this.emit('error',
-        err.code === 'ENOENT'
-          ? 'Java не знайдено! Встановіть Java 17+ або вкажіть шлях у Налаштуваннях.'
-          : err.message
-      );
+      if (err.code === 'ENOENT') {
+        this.emit('error', 'Java не знайдено! Встановіть Java 17+ або вкажіть шлях у Налаштуваннях.');
+      } else if (err.code === 'EACCES') {
+        this.emit('error', 'Немає доступу до Java. Запустіть лаунчер від імені адміністратора.');
+      } else {
+        this.emit('error', 'Помилка запуску: ' + err.message);
+      }
     });
   }
 

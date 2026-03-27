@@ -1,5 +1,18 @@
 'use strict';
 
+window.onerror = (msg, src, line, col, err) => {
+  console.error('Renderer error:', msg, src, line);
+  try {
+    toast('Помилка: ' + msg, 'error', 8000);
+  } catch {}
+};
+window.onunhandledrejection = (e) => {
+  console.error('Unhandled rejection:', e.reason);
+  try {
+    toast('Помилка: ' + (e.reason?.message || e.reason), 'error', 8000);
+  } catch {}
+};
+
 let settings    = {};
 let gameRunning = false;
 let consoleLines = [];
@@ -429,8 +442,11 @@ async function saveSettings() {
 
 function setupIPCListeners() {
 
+  let gameStartTime = 0;
+
   launcher.onStarted(() => {
     clearTimeout(progressTimeout);
+    gameStartTime = Date.now();
     setLaunchBtn('running');
     hideProgress();
     $('consoleStatus').textContent = '● Гра запущена';
@@ -443,10 +459,14 @@ function setupIPCListeners() {
     clearTimeout(progressTimeout);
     setLaunchBtn('idle');
     hideProgress();
+    const uptime = Date.now() - gameStartTime;
+    if (code !== 0 && uptime < 10000) {
+      toast('Гра вилетіла одразу після запуску! Перевірте вкладку "Лог".', 'error');
+      switchToConsole();
+    }
     $('consoleStatus').textContent = `Гру закрито (код: ${code})`;
-    $('consoleStatus').style.color = 'var(--text-muted)';
+    $('consoleStatus').style.color = code === 0 ? 'var(--text-muted)' : 'var(--red)';
     appendConsole(`[Launcher] Гру закрито, код виходу: ${code}`);
-
     if ($('tab-mods').classList.contains('active')) loadModsTab();
   });
 
@@ -454,8 +474,9 @@ function setupIPCListeners() {
     clearTimeout(progressTimeout);
     setLaunchBtn('idle');
     hideProgress();
-    toast('Помилка гри: ' + message, 'error');
+    toast('Помилка: ' + message, 'error');
     appendConsole('[ПОМИЛКА] ' + message, true);
+    switchToConsole();
   });
 
   launcher.onStdout(line => appendConsole(line));
@@ -570,6 +591,13 @@ function startParticles() {
     requestAnimationFrame(loop);
   };
   loop();
+}
+
+function switchToConsole() {
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-tab="console"]').classList.add('active');
+  $('tab-console').classList.add('active');
 }
 
 function toast(msg, type = 'info', dur = 4000) {
