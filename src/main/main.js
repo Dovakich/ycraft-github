@@ -96,7 +96,11 @@ app.on('activate', () => {
 function setupAutoUpdater() {
   if (process.env.NODE_ENV === 'development') return;
   try {
-    autoUpdater.setFeedURL({ provider: 'generic', url: UPDATE_FEED_URL });
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner:    'Dovakich',
+      repo:     'ycraft-github',
+    });
     autoUpdater.on('checking-for-update',  () => send('updater:status', { status: 'checking' }));
     autoUpdater.on('update-available',  i  => send('updater:status', { status: 'available', version: i.version }));
     autoUpdater.on('update-not-available', () => send('updater:status', { status: 'latest' }));

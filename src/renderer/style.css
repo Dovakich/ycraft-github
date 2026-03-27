@@ -3,11 +3,11 @@
    ═══════════════════════════════════════════════════ */
 
 :root {
-  --bg:         #0d0f14;
-  --bg2:        #13161e;
-  --bg3:        #1a1e28;
-  --border:     #252a38;
-  --border2:    #2e3547;
+  --bg:         #13161f;
+  --bg2:        #181c27;
+  --bg3:        #1e2330;
+  --border:     #2a3045;
+  --border2:    #333d55;
   --gold:       #c9a84c;
   --gold2:      #e8c96a;
   --gold-dim:   #8a6e2a;
@@ -15,8 +15,8 @@
   --green-dim:  #2a7a48;
   --red:        #e05252;
   --text:       #d8dce8;
-  --text-dim:   #9ba3bb;
-  --text-muted: #6a7490;
+  --text-dim:   #adb5cc;
+  --text-muted: #7a85a0;
   --accent:     #5b8dee;
   --sidebar-w:  82px;
   --titlebar-h: 36px;
@@ -44,7 +44,7 @@ html, body {
 #titlebar {
   position: fixed; top: 0; left: 0; right: 0;
   height: var(--titlebar-h);
-  background: #090b10;
+  background: #0f1219;
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   z-index: 1000;
@@ -98,7 +98,7 @@ html, body {
   position: fixed;
   top: var(--titlebar-h); left: 0; bottom: 0;
   width: var(--sidebar-w);
-  background: #090b10;
+  background: #0f1219;
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   z-index: 100;
@@ -177,7 +177,7 @@ html, body {
 
 .play-bg {
   position: absolute; inset: 0;
-  background: linear-gradient(160deg, #0c0e15 0%, #0d1018 50%, #0a0c13 100%);
+  background: linear-gradient(160deg, #111520 0%, #131826 50%, #0f1320 100%);
 }
 
 .play-overlay {
