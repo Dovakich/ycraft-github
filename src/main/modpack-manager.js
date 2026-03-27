@@ -69,7 +69,14 @@ class ModpackManager extends EventEmitter {
       const arc = archives[i];
       this._status(`Перевірка ${arc.name} (${i + 1}/${total})…`);
 
-      const destDir  = path.join(this.gameDir, arc.extractTo || arc.name);
+      const extractTarget = arc.extractTo || arc.name;
+      const PROTECTED = ['libraries', 'versions', 'assets', 'logs'];
+      if (PROTECTED.includes(extractTarget)) {
+        this.log.warn('[Modpack] Skipping protected directory:', extractTarget);
+        done++;
+        continue;
+      }
+      const destDir  = path.join(this.gameDir, extractTarget);
       const tempZip  = path.join(os.tmpdir(), `ycraft-${arc.name}-${Date.now()}.zip`);
 
       const cachedVer = meta[`archive_${arc.name}`];

@@ -154,15 +154,39 @@ class ForgeInstaller extends EventEmitter {
       const art = lib.downloads?.artifact;
       if (!art?.url) { done++; continue; }
       const dest = path.join(libsDir, art.path);
-      if (!fs.existsSync(dest)) {
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        await this._dl(art.url, dest).catch(e =>
-          this.log.warn('[FI] lib skip:', path.basename(art.path), e.message)
-        );
+
+      let needDownload = !fs.existsSync(dest);
+
+      if (!needDownload) {
+        const stat = fs.statSync(dest);
+        if (stat.size === 0) needDownload = true;
+        else if (art.sha1 && stat.size > 0) {
+          try {
+            const actual = await this._sha1(dest);
+            if (actual !== art.sha1) {
+              this.log.warn('[FI] SHA1 mismatch, redownloading:', path.basename(dest));
+              fs.unlinkSync(dest);
+              needDownload = true;
+            }
+          } catch {}
+        }
       }
+
+      if (needDownload) {
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        try {
+          await this._dlRetry(art.url, dest, art.size || null, path.basename(dest), 3);
+        } catch (e) {
+          this.log.warn('[FI] lib failed after retries:', path.basename(dest), e.message);
+        }
+      }
+
       done++;
-      if (done % 10 === 0)
-        this.emit('progress', { file: 'Бібліотеки MC', percent: Math.round(done/libs.length*100), current: done, total: libs.length });
+      this.emit('progress', {
+        file: 'Бібліотеки MC',
+        percent: Math.round(done / libs.length * 100),
+        current: done, total: libs.length
+      });
     }
   }
 
