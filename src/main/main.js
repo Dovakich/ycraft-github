@@ -77,6 +77,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Migration: force closeOnLaunch=false for users who had old default=true
+  // This overrides whatever is saved in the store
+  store.set('closeOnLaunch', false);
+
   createWindow();
   setupAutoUpdater();
   setupIPC();
