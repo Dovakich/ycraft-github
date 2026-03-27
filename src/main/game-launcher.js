@@ -177,6 +177,9 @@ class GameLauncher extends EventEmitter {
     delete env._JAVA_OPTIONS;
     delete env.JDK_JAVA_OPTIONS;
 
+    // Перевіряємо версію Java перед запуском
+    this._checkJavaVersion(javaPath);
+
     this.log.info('[GL] spawn java, RAM:', ram + 'MB');
 
     let proc;
@@ -419,38 +422,25 @@ class GameLauncher extends EventEmitter {
       h.slice(20,32)].join('-');
   }
 
-  _detectJava() {
-    const stored = this.store.get('javaPath');
-    if (stored && fs.existsSync(stored)) return stored;
-
-    if (process.env.JAVA_HOME) {
-      const jp = path.join(process.env.JAVA_HOME, 'bin',
-        process.platform === 'win32' ? 'java.exe' : 'java');
-      if (fs.existsSync(jp)) return jp;
+  _checkJavaVersion(javaPath) {
+    const { getJavaVersion } = require('./java-finder');
+    const ver = getJavaVersion(javaPath);
+    this.log.info('[GL] Java version:', ver, 'at', javaPath);
+    if (ver !== null && ver < 17) {
+      throw new Error(
+        `Java ${ver} занадто стара для Forge 1.20.1!\n\n` +
+        'Потрібна Java 17 або 21.\n' +
+        'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
+        'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
+      );
     }
+  }
 
-    const c = process.platform === 'win32' ? [
-      'C:\\Program Files\\Java\\jdk-21\\bin\\java.exe',
-      'C:\\Program Files\\Java\\jdk-17\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.5.11-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.4.7-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.13.11-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.9.9-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Microsoft\\jdk-21.0.5.11-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Microsoft\\jdk-17.0.9.8-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Zulu\\zulu-21\\bin\\java.exe',
-      'C:\\Program Files\\Zulu\\zulu-17\\bin\\java.exe',
-    ] : process.platform === 'darwin' ? [
-      '/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java',
-      '/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java',
-      '/usr/local/bin/java',
-    ] : [
-      '/usr/lib/jvm/java-21-openjdk-amd64/bin/java',
-      '/usr/lib/jvm/java-17-openjdk-amd64/bin/java',
-      '/usr/bin/java',
-    ];
-
-    for (const p of c) if (fs.existsSync(p)) return p;
+  _detectJava() {
+    const { findJava } = require('./java-finder');
+    const stored = this.store.get('javaPath');
+    const result = findJava(stored, this.log);
+    if (result) return result.path;
     return 'java';
   }
 }

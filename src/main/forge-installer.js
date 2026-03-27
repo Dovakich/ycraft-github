@@ -47,6 +47,28 @@ class ForgeInstaller extends EventEmitter {
 
   setJavaPath(p) { this._storedJava = p || ''; }
 
+  _getJava() {
+    const { findJava } = require('./java-finder');
+    const result = findJava(this._storedJava, this.log);
+    if (!result) {
+      throw new Error(
+        'Java не знайдено!\n\n' +
+        'Forge 1.20.1 потребує Java 17 або 21.\n' +
+        'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
+        'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
+      );
+    }
+    if (result.version < 17) {
+      throw new Error(
+        `Java ${result.version} занадто стара!\n\n` +
+        'Forge 1.20.1 потребує Java 17 або 21.\n' +
+        'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
+        'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
+      );
+    }
+    return result.path;
+  }
+
   isInstalled() {
 
     const vJson = path.join(
@@ -290,7 +312,7 @@ class ForgeInstaller extends EventEmitter {
 
   _runForgeInstaller() {
     return new Promise((resolve, reject) => {
-      const java = this._findJava();
+      const java = this._getJava();
       const libsDir = path.join(this.gameDir, 'libraries');
       const args = [
         '-Xmx1g', '-Xms256m',
@@ -785,36 +807,6 @@ class ForgeInstaller extends EventEmitter {
     return (b/1_073_741_824).toFixed(2) + ' ГБ';
   }
 
-  _findJava() {
-    if (this._storedJava && fs.existsSync(this._storedJava)) return this._storedJava;
-    if (process.env.JAVA_HOME) {
-      const jp = path.join(process.env.JAVA_HOME, 'bin',
-        process.platform === 'win32' ? 'java.exe' : 'java');
-      if (fs.existsSync(jp)) return jp;
-    }
-    const c = process.platform === 'win32' ? [
-      'C:\\Program Files\\Java\\jdk-21\\bin\\java.exe',
-      'C:\\Program Files\\Java\\jdk-17\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.5.11-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.4.7-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.13.11-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.9.9-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Microsoft\\jdk-21.0.5.11-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Microsoft\\jdk-17.0.9.8-hotspot\\bin\\java.exe',
-      'C:\\Program Files\\Zulu\\zulu-21\\bin\\java.exe',
-      'C:\\Program Files\\Zulu\\zulu-17\\bin\\java.exe',
-    ] : process.platform === 'darwin' ? [
-      '/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java',
-      '/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java',
-      '/usr/local/bin/java',
-    ] : [
-      '/usr/lib/jvm/java-21-openjdk-amd64/bin/java',
-      '/usr/lib/jvm/java-17-openjdk-amd64/bin/java',
-      '/usr/bin/java',
-    ];
-    for (const p of c) if (fs.existsSync(p)) return p;
-    return 'java';
-  }
 }
 
 module.exports = { ForgeInstaller };

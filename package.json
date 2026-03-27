@@ -1,6 +1,6 @@
 {
   "name": "ycraft-launcher",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "description": "Y-Craft Official Minecraft Launcher",
   "main": "src/main/main.js",
   "scripts": {
