@@ -276,6 +276,11 @@ function loadNews() {
 }
 
 async function loadModsTab() {
+  const btn = $('btnOpenModsDir');
+  if (btn && !btn._bound) {
+    btn.addEventListener('click', () => launcher.openModsDir());
+    btn._bound = true;
+  }
   const list = $('modList');
   list.innerHTML = '<div class="loading-placeholder">Завантаження списку модів…</div>';
 
@@ -411,6 +416,14 @@ function setupSettingsTab() {
 
   $('btnOpenDir').addEventListener('click', () => launcher.openGameDir());
   $('btnSaveSettings').addEventListener('click', saveSettings);
+  $('btnUninstall').addEventListener('click', async () => {
+    const r = await launcher.uninstall();
+    if (r?.success) {
+      toast('Файли гри видалено. Перезапустіть лаунчер.', 'success', 6000);
+    } else if (r?.error) {
+      toast('Помилка видалення: ' + r.error, 'error');
+    }
+  });
 
   $('autoConnectSetting').addEventListener('change', () => {
     $('autoConnectCheck').checked = $('autoConnectSetting').checked;

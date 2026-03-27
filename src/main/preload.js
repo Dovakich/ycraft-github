@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('launcher', {
 
   getVersion:    ()     => ipcRenderer.invoke('launcher:version'),
   openGameDir:   ()     => ipcRenderer.invoke('launcher:openGameDir'),
+  openModsDir:   ()     => ipcRenderer.invoke('launcher:openModsDir'),
+  openUrl:       (url)  => ipcRenderer.invoke('launcher:openUrl', url),
+  uninstall:     ()     => ipcRenderer.invoke('launcher:uninstall'),
 
   listMods:      ()     => ipcRenderer.invoke('mods:list'),
 

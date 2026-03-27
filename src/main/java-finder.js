@@ -80,14 +80,32 @@ function getCandidates(storedPath) {
       } catch {}
     }
 
-    // 4. Eclipse Adoptium
-    const adoptium = 'C:\\Program Files\\Eclipse Adoptium';
-    if (fs.existsSync(adoptium)) {
+    // 4. Eclipse Adoptium (Temurin) — multiple possible locations
+    const adoptiumBases = [
+      'C:\\Program Files\\Eclipse Adoptium',
+      'C:\\Program Files\\Adoptium',
+      'C:\\Program Files\\AdoptOpenJDK',
+    ];
+    for (const adoptium of adoptiumBases) {
+      if (!fs.existsSync(adoptium)) continue;
       try {
         const dirs = fs.readdirSync(adoptium)
+          .filter(d => d.startsWith('jdk') || d.startsWith('jre') || d.match(/^\d/))
           .sort((a, b) => extractVersion(b) - extractVersion(a));
         for (const d of dirs) {
           candidates.push(path.join(adoptium, d, 'bin', 'java.exe'));
+          // Some versions have nested structure like jdk-17.0.9.9-hotspot/
+          const sub = path.join(adoptium, d);
+          if (fs.existsSync(sub)) {
+            try {
+              const subdirs = fs.readdirSync(sub)
+                .filter(s => s.startsWith('jdk') || s.match(/^\d/))
+                .sort((a, b) => extractVersion(b) - extractVersion(a));
+              for (const s of subdirs) {
+                candidates.push(path.join(sub, s, 'bin', 'java.exe'));
+              }
+            } catch {}
+          }
         }
       } catch {}
     }
