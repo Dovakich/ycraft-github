@@ -107,7 +107,24 @@ function setupAutoUpdater() {
     autoUpdater.on('update-downloaded',    () => send('updater:status', { status: 'ready' }));
     autoUpdater.on('error', err => {
       log.warn('AutoUpdater:', err.message);
-      send('updater:status', { status: 'error', message: err.message });
+      // Не показуємо мережеві помилки користувачу — вони не критичні
+      // (немає інтернету, немає релізів на GitHub, запуск не з інсталятора)
+      const silent = [
+        'ERR_NAME_NOT_RESOLVED',
+        'ERR_INTERNET_DISCONNECTED',
+        'ERR_CONNECTION_REFUSED',
+        'ENOTFOUND',
+        'ECONNREFUSED',
+        'ETIMEDOUT',
+        'HttpError: 404',
+        'net::',
+        'Cannot find latest',
+        'No published versions',
+      ];
+      const isSilent = silent.some(s => err.message.includes(s));
+      if (!isSilent) {
+        send('updater:status', { status: 'error', message: err.message });
+      }
     });
     autoUpdater.on('download-progress', p => send('updater:progress', {
       percent:  Math.round(p.percent),

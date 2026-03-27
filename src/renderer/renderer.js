@@ -431,8 +431,17 @@ function setupSettingsTab() {
 
   $('btnCheckUpdate').addEventListener('click', async () => {
     $('btnCheckUpdate').textContent = 'Перевірка…';
-    await launcher.checkUpdate();
+    const notice = $('updateNotice');
+    notice._manualCheck = true;
+    const r = await launcher.checkUpdate();
     $('btnCheckUpdate').textContent = '↻ Перевірити';
+    if (r?.error || r?.updateInfo === undefined) {
+      // Якщо оновлень немає — показати повідомлення
+      notice.style.display = 'block';
+      notice.className = 'update-notice';
+      notice.textContent = '✓ У вас остання версія лаунчера.';
+      notice._manualCheck = false;
+    }
   });
 
   $('javaVersion').textContent = settings.javaPath ? 'Вказано власний шлях' : 'Авто-визначення';
@@ -541,10 +550,17 @@ function setupIPCListeners() {
     } else if (data.status === 'ready') {
       notice.style.display = 'block';
       notice.innerHTML = '✅ Оновлення завантажено. <button class="btn-small" onclick="launcher.installUpdate()">Перезапустити</button>';
+    } else if (data.status === 'latest') {
+      // нічого не показуємо — і так зрозуміло
     } else if (data.status === 'error') {
-      notice.style.display = 'block';
-      notice.className     = 'update-notice error';
-      notice.textContent   = 'Помилка оновлення: ' + data.message;
+      // Показуємо лише якщо явно натиснули "Перевірити"
+      // (фонові помилки вже відфільтровані в main.js)
+      if (notice._manualCheck) {
+        notice.style.display = 'block';
+        notice.className     = 'update-notice error';
+        notice.textContent   = 'Помилка перевірки: ' + data.message;
+        notice._manualCheck  = false;
+      }
     }
   });
 
