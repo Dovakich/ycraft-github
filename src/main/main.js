@@ -197,20 +197,18 @@ function setupIPC() {
     if (response !== 0) return { cancelled: true };
 
     try {
-      // 1. Видаляємо файли гри
-      if (fs.existsSync(gameDir)) {
-        fs.rmSync(gameDir, { recursive: true, force: true });
-      }
+      const { exec } = require('child_process');
+      const exePath    = process.execPath;
+      const exeDir     = path.dirname(exePath);
+      const appDir     = path.dirname(exeDir);
+      const appDataDir = path.join(app.getPath('appData'), 'ycraft-launcher');
+      const localApp   = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'y-craft-launcher');
+      const tempPath   = app.getPath('temp');
+
       store.clear();
 
-      // 2. Запускаємо видалення лаунчера залежно від ОС
-      const { exec } = require('child_process');
-      const exePath = process.execPath; // шлях до .exe лаунчера
-
       if (process.platform === 'win32') {
-        // Шукаємо uninstaller поруч з exe або в стандартних місцях
-        const exeDir       = path.dirname(exePath);
-        const appDir       = path.dirname(exeDir);
+        // Шукаємо NSIS uninstaller
         const uninstallers = [
           path.join(appDir, 'Uninstall Y-Craft Launcher.exe'),
           path.join(appDir, 'uninstall.exe'),
@@ -219,41 +217,53 @@ function setupIPC() {
         ];
         const uninstaller = uninstallers.find(p => fs.existsSync(p));
 
-        if (uninstaller) {
-          // Запускаємо NSIS uninstaller і закриваємо лаунчер
-          exec(`"${uninstaller}" /S`, (err) => {
-            if (err) log.warn('Uninstaller error:', err.message);
-          });
-          setTimeout(() => app.quit(), 1000);
-        } else {
-          // Якщо uninstaller не знайдено — видаляємо файли лаунчера вручну через bat
-          const appDataDir = path.join(app.getPath('appData'), 'ycraft-launcher');
-          const localApp   = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'y-craft-launcher');
-          const batPath    = path.join(app.getPath('temp'), 'ycraft_uninstall.bat');
-          const batContent = [
-            '@echo off',
-            'timeout /t 2 /nobreak >nul',
-            `if exist "${exeDir}" rmdir /s /q "${exeDir}"`,
-            `if exist "${appDataDir}" rmdir /s /q "${appDataDir}"`,
-            `if exist "${localApp}"  rmdir /s /q "${localApp}"`,
-            'del "%~f0"'
-          ].join('\r\n');
-          fs.writeFileSync(batPath, batContent, 'utf8');
-          exec(`start "" /b cmd /c "${batPath}"`);
-          setTimeout(() => app.quit(), 500);
+        // BAT-скрипт видаляє ВСЕ одразу після закриття лаунчера:
+        //  - папку гри (.ycraft)
+        //  - папку лаунчера (де знаходиться .exe)
+        //  - AppData лаунчера
+        //  - ярлики (якщо NSIS не знайдено)
+        const batPath = path.join(tempPath, 'ycraft_uninstall.bat');
+        const lines = [
+          '@echo off',
+          'timeout /t 2 /nobreak >nul',
+        ];
+
+        if (fs.existsSync(gameDir)) {
+          lines.push(`rmdir /s /q "${gameDir}"`);
         }
 
+        if (uninstaller) {
+          // NSIS видалить лаунчер тихо (/S = silent)
+          lines.push(`start "" /wait "${uninstaller}" /S`);
+        } else {
+          // Ручне видалення папок лаунчера
+          lines.push(`if exist "${exeDir}" rmdir /s /q "${exeDir}"`);
+          lines.push(`if exist "${appDataDir}" rmdir /s /q "${appDataDir}"`);
+          lines.push(`if exist "${localApp}" rmdir /s /q "${localApp}"`);
+        }
+
+        lines.push('del "%~f0"');
+
+        fs.writeFileSync(batPath, lines.join('\r\n'), 'utf8');
+        // Запускаємо bat і одразу закриваємо лаунчер
+        exec(`start "" /b cmd /c "${batPath}"`);
+        setTimeout(() => app.quit(), 300);
+
       } else if (process.platform === 'darwin') {
-        // macOS: переміщуємо .app у корзину
-        const appBundle = path.join(path.dirname(path.dirname(path.dirname(exePath))));
-        exec(`osascript -e 'tell application "Finder" to move POSIX file "${appBundle}" to trash'`);
-        setTimeout(() => app.quit(), 1000);
+        const appBundle = path.dirname(path.dirname(path.dirname(exePath)));
+        const script = [
+          `rm -rf "${gameDir}"`,
+          `osascript -e 'tell application "Finder" to move POSIX file "${appBundle}" to trash'`,
+        ].join(' && ');
+        exec(script);
+        setTimeout(() => app.quit(), 800);
 
       } else {
-        // Linux: видаляємо AppImage або папку
+        // Linux
         const appImage = process.env.APPIMAGE || exePath;
-        exec(`rm -rf "${appImage}" "${path.join(app.getPath('home'), '.config', 'ycraft-launcher')}"`);
-        setTimeout(() => app.quit(), 500);
+        const configDir = path.join(app.getPath('home'), '.config', 'ycraft-launcher');
+        exec(`rm -rf "${gameDir}" "${appImage}" "${configDir}"`);
+        setTimeout(() => app.quit(), 300);
       }
 
       return { success: true };
