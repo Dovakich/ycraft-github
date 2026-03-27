@@ -48,25 +48,41 @@ class ForgeInstaller extends EventEmitter {
   setJavaPath(p) { this._storedJava = p || ''; }
 
   _getJava() {
-    const { findJava } = require('./java-finder');
-    const result = findJava(this._storedJava, this.log);
-    if (!result) {
+    const { findJava, getJavaVersion, getCandidates } = require('./java-finder');
+
+    // First check stored path regardless of version (user explicitly chose it)
+    if (this._storedJava && require('fs').existsSync(this._storedJava)) {
+      const ver = getJavaVersion(this._storedJava);
+      if (ver !== null && ver < 17) {
+        throw new Error(
+          `Java ${ver} занадто стара для Forge 1.20.1!\n\n` +
+          'Потрібна Java 17 або 21.\n' +
+          'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
+          'Або вкажіть інший шлях у Налаштуваннях -> Java -> Огляд'
+        );
+      }
+      if (ver !== null) return this._storedJava;
+    }
+
+    // Find any Java 17+
+    const result = findJava(null, this.log, 17);
+    if (result) return result.path;
+
+    // Nothing found — check if there's ANY java to give better error
+    const anyJava = getJavaVersion('java');
+    if (anyJava !== null) {
       throw new Error(
-        'Java не знайдено!\n\n' +
-        'Forge 1.20.1 потребує Java 17 або 21.\n' +
-        'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
-        'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
+        `Java ${anyJava} знайдено в PATH, але потрібна Java 17+.\n\n` +
+        'Завантажте: https://adoptium.net/temurin/releases/?version=21'
       );
     }
-    if (result.version < 17) {
-      throw new Error(
-        `Java ${result.version} занадто стара!\n\n` +
-        'Forge 1.20.1 потребує Java 17 або 21.\n' +
-        'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
-        'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
-      );
-    }
-    return result.path;
+
+    throw new Error(
+      'Java не знайдено!\n\n' +
+      'Forge 1.20.1 потребує Java 17 або 21.\n' +
+      'Завантажте: https://adoptium.net/temurin/releases/?version=21\n\n' +
+      'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
+    );
   }
 
   isInstalled() {

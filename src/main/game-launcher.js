@@ -426,7 +426,11 @@ class GameLauncher extends EventEmitter {
     const { getJavaVersion } = require('./java-finder');
     const ver = getJavaVersion(javaPath);
     this.log.info('[GL] Java version:', ver, 'at', javaPath);
-    if (ver !== null && ver < 17) {
+    if (ver === null) {
+      this.log.warn('[GL] Could not detect Java version, proceeding anyway');
+      return;
+    }
+    if (ver < 17) {
       throw new Error(
         `Java ${ver} занадто стара для Forge 1.20.1!\n\n` +
         'Потрібна Java 17 або 21.\n' +
@@ -434,13 +438,18 @@ class GameLauncher extends EventEmitter {
         'Або вкажіть шлях у Налаштуваннях -> Java -> Огляд'
       );
     }
+    this.log.info('[GL] Java version OK:', ver);
   }
 
   _detectJava() {
     const { findJava } = require('./java-finder');
     const stored = this.store.get('javaPath');
-    const result = findJava(stored, this.log);
-    if (result) return result.path;
+    const result = findJava(stored, this.log, 17);
+    if (result) {
+      this.log.info('[GL] Auto-detected Java', result.version, 'at', result.path);
+      return result.path;
+    }
+    this.log.warn('[GL] No Java 17+ found, falling back to system java');
     return 'java';
   }
 }

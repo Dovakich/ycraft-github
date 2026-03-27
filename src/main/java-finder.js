@@ -4,23 +4,27 @@ const path   = require('path');
 const fs     = require('fs');
 const { spawnSync } = require('child_process');
 
-// Знаходить Java та перевіряє її версію
+// Знаходить Java 17+ та перевіряє її версію
 // Повертає { path, version } або null
-function findJava(storedPath, log) {
+// minVersion: мінімальна версія (за замовчуванням 17)
+function findJava(storedPath, log, minVersion = 17) {
   const candidates = getCandidates(storedPath);
   for (const jp of candidates) {
-    if (!fs.existsSync(jp)) continue;
+    if (!jp) continue;
+    if (jp !== 'java' && !fs.existsSync(jp)) continue;
     const ver = getJavaVersion(jp);
-    if (ver !== null) {
-      if (log) log.info('[JavaFinder] found:', jp, 'version:', ver);
+    if (ver !== null && ver >= minVersion) {
+      if (log) log.info('[JavaFinder] found Java', ver, 'at', jp);
       return { path: jp, version: ver };
+    } else if (ver !== null) {
+      if (log) log.info('[JavaFinder] skipping Java', ver, '(need', minVersion + '+)', jp);
     }
   }
 
-  // Fallback: try 'java' from PATH
+  // Fallback: 'java' from PATH — check version
   const ver = getJavaVersion('java');
-  if (ver !== null) {
-    if (log) log.info('[JavaFinder] found in PATH, version:', ver);
+  if (ver !== null && ver >= minVersion) {
+    if (log) log.info('[JavaFinder] found Java', ver, 'in PATH');
     return { path: 'java', version: ver };
   }
 
