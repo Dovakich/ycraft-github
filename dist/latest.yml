@@ -1,8 +1,8 @@
-version: 2.1.4
+version: 2.1.5
 files:
-  - url: Y-Craft-Launcher-Setup-2.1.4.exe
-    sha512: Yw4ZPUwzz6rH++9skr8B9w+FDoyUsW6epv876lNVxN8R2fIH1RbV5/yqwqKZpi8F8y4YA5BatREJwI+Ss5jjiA==
-    size: 75416723
-path: Y-Craft-Launcher-Setup-2.1.4.exe
-sha512: Yw4ZPUwzz6rH++9skr8B9w+FDoyUsW6epv876lNVxN8R2fIH1RbV5/yqwqKZpi8F8y4YA5BatREJwI+Ss5jjiA==
-releaseDate: '2026-03-29T13:32:02.852Z'
+  - url: Y-Craft-Launcher-Setup-2.1.5.exe
+    sha512: DepZmwQjjYW+3u8Zajh2SG4bDU6m7w4U3LZ2s5aqW/SKvvb8x4B/knooeBTL6o+iIxnZRGxo5D0xMFg/OEi4Qw==
+    size: 75416722
+path: Y-Craft-Launcher-Setup-2.1.5.exe
+sha512: DepZmwQjjYW+3u8Zajh2SG4bDU6m7w4U3LZ2s5aqW/SKvvb8x4B/knooeBTL6o+iIxnZRGxo5D0xMFg/OEi4Qw==
+releaseDate: '2026-03-29T13:39:20.913Z'
